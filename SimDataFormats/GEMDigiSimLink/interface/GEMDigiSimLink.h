@@ -8,9 +8,12 @@
 
 class GEMDigiSimLink {
 public:
-  GEMDigiSimLink(uint16_t strip, int8_t bx, int16_t particleType, uint32_t trackId, EncodedEventId eventId) {
+  GEMDigiSimLink(uint16_t strip, int8_t bx, Local3DPoint entryPoint, float timeOfFlight, uint32_t detUnitId, int16_t particleType, uint32_t trackId, EncodedEventId eventId) {
     strip_ = strip;
     bx_ = bx;
+    entryPoint_ = entryPoint;
+    timeOfFlight_ = timeOfFlight;
+    detUnitId_ = detUnitId;
     particleType_ = particleType;
     trackId_ = trackId;
     eventId_ = eventId;
@@ -21,6 +24,9 @@ public:
 
   unsigned int getStrip() const { return strip_; }
   int getBx() const { return bx_; }
+  Local3DPoint getEntryPoint() const { return entryPoint_; }
+  float getTimeOfFlight() const { return timeOfFlight_; }
+  unsigned int getDetUnitId() const { return detUnitId_; }
   int getParticleType() const { return particleType_; }
   unsigned int getTrackId() const { return trackId_; }
   EncodedEventId getEventId() const { return eventId_; }
@@ -30,6 +36,9 @@ public:
 private:
   uint16_t strip_;
   int8_t bx_;
+  Local3DPoint entryPoint_;
+  float timeOfFlight_;
+  uint32_t detUnitId_;
   int16_t particleType_;
   uint32_t trackId_;
   EncodedEventId eventId_;

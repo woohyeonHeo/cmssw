@@ -58,6 +58,6 @@ void ME0DigiModel::addLinksWithPartId(unsigned int strip, int bx) {
     if (hit == nullptr)
       continue;
 
-    theME0DigiSimLinks_.push_back(ME0DigiSimLink(strip, bx, hit->particleType(), hit->trackId(), hit->eventId()));
+    theME0DigiSimLinks_.push_back(ME0DigiSimLink(strip, bx, hit->entryPoint(), hit->timeOfFlight(), hit->detUnitId(), hit->particleType(), hit->trackId(), hit->eventId()));
   }
 }
