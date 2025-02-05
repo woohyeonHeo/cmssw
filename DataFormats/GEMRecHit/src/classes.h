@@ -8,4 +8,6 @@
 #include "DataFormats/GEMRecHit/interface/GEMSegmentCollection.h"
 #include "DataFormats/GEMRecHit/interface/ME0Segment.h"
 #include "DataFormats/GEMRecHit/interface/ME0SegmentCollection.h"
+#include "DataFormats/GEMRecHit/interface/ME0Stub.h"
+#include "DataFormats/GEMRecHit/interface/ME0StubCollection.h"
 #include "DataFormats/Common/interface/Wrapper.h"
