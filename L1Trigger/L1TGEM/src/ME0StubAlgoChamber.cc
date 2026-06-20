@@ -3,73 +3,102 @@
 
 using namespace l1t::me0;
 
-std::vector<std::vector<ME0StubPrimitive>> l1t::me0::crossPartitionCancellation(
-    std::vector<std::vector<ME0StubPrimitive>>& segments, int crossPartSegWidth) {
-  ME0StubPrimitive seg;
-  ME0StubPrimitive seg1;
-  ME0StubPrimitive seg2;
+std::vector<std::vector<ME0StubPrimitive>> l1t::me0::deghostingClearance(
+  std::vector<std::vector<ME0StubPrimitive>>& segments, int clearanceWidth) {
+  auto segsOut = segments;
+  for (int prtIdx=0; prtIdx < static_cast<int>(segments.size()); ++prtIdx) {
+    for (int segIdx=0; segIdx < static_cast<int>(segments[prtIdx].size()); ++segIdx) {
+      std::vector<int> prts = {0};
+      std::vector<int> chunks = {0};
 
-  int strip;
-  int seg1MaxQuality;
-  int seg2MaxQuality;
-  int seg1MaxQualityIndex;
-  int seg2MaxQualityIndex;
-
-  for (int i = 1; i < static_cast<int>(segments.size()); i += 2) {
-    for (int l = 0; l < static_cast<int>(segments[i].size()); ++l) {
-      seg = segments[i][l];
-      if (seg.patternId() == 0)
-        continue;
-
-      strip = seg.strip();
-      seg1MaxQuality = -9999;
-      seg2MaxQuality = -9999;
-      seg1MaxQualityIndex = -9999;
-      seg2MaxQualityIndex = -9999;
-
-      for (int j = 0; j < static_cast<int>(segments[i - 1].size()); ++j) {
-        seg1 = segments[i - 1][j];
-        if (seg1.patternId() == 0)
-          continue;
-        if (std::abs(strip - seg1.strip()) <= crossPartSegWidth) {
-          if (seg1.quality() > seg1MaxQuality) {
-            if (seg1MaxQualityIndex != -9999)
-              (segments[i - 1][seg1MaxQualityIndex]).reset();
-            seg1MaxQualityIndex = j;
-            seg1MaxQuality = seg1.quality();
-          }
+      // If virtual partition, do x-prt deghosting. If at top or bottom, don't try to look out of bounds.
+      if (prtIdx % 2 == 1) {
+        if (prtIdx != 0) prts.push_back(-1);
+        if (prtIdx != static_cast<int>(segments.size()) - 1) prts.push_back(1);
+      }
+      // Don't look out of bounds
+      if (segIdx != 0) chunks.push_back(-1);
+      if (segIdx != static_cast<int>(segments[prtIdx].size()) - 1) chunks.push_back(1);
+      // Generate all permutations of (relative_partition, relative_chunk)
+      std::vector<std::pair<int, int>> relativeIndices;
+      for (int prt : prts) {
+        for (int chunk : chunks) {
+          if (prt == 0 && chunk == 0) continue; // skip self
+          relativeIndices.emplace_back(prt, chunk);
         }
       }
-      for (int k = 0; k < static_cast<int>(segments[i + 1].size()); ++k) {
-        seg2 = segments[i + 1][k];
-        if (seg2.patternId() == 0)
-          continue;
-        if (std::abs(strip - seg2.strip()) <= crossPartSegWidth) {
-          if (seg2.quality() > seg2MaxQuality) {
-            if (seg2MaxQualityIndex != -9999)
-              (segments[i + 1][seg2MaxQualityIndex]).reset();
-            seg2MaxQualityIndex = k;
-            seg2MaxQuality = seg2.quality();
+      auto seg = segments[prtIdx][segIdx];
+      for (const auto& [relativePrt, relativeChunk] : relativeIndices) {
+        auto otherSeg = segments[prtIdx + relativePrt][segIdx + relativeChunk];
+        if (otherSeg.patternId() != 0 && std::abs(seg.strip() - otherSeg.strip()) <= clearanceWidth) {
+          if (seg.quality() > otherSeg.quality()) {
+            segsOut[prtIdx + relativePrt][segIdx + relativeChunk].reset();
+          } else {
+            segsOut[prtIdx][segIdx].reset();
           }
         }
-      }
-
-      if ((seg1MaxQualityIndex != -9999) && (seg2MaxQualityIndex != -9999)) {
-        segments[i - 1][seg1MaxQualityIndex].reset();
-        segments[i + 1][seg2MaxQualityIndex].reset();
-      } else if (seg1MaxQualityIndex != -9999) {
-        segments[i][l].reset();
-      } else if (seg2MaxQualityIndex != -9999) {
-        segments[i][l].reset();
       }
     }
   }
-  return segments;
+  return segsOut;
 }
 
-std::vector<ME0StubPrimitive> l1t::me0::processChamber(const std::vector<std::vector<UInt192>>& chamberData,
-                                                       const std::vector<std::vector<std::vector<int>>>& chamberBxData,
-                                                       Config& config) {
+std::vector<std::vector<ME0StubPrimitive>> l1t::me0::crossPartitionCancellation(
+    std::vector<std::vector<ME0StubPrimitive>>& segments, int crossPartSegWidth) {
+  auto segRealKilled = segments;
+  // Step 1: Kill real segments with a better nearby virtual segment
+  for (int prtIdx = 1; prtIdx < static_cast<int>(segments.size()) - 1; prtIdx += 2) {
+    for (int segIdx = 0; segIdx < static_cast<int>(segments[prtIdx].size()); ++segIdx) {
+      auto seg = segments[prtIdx][segIdx];
+      if (seg.patternId() == 0) 
+        continue;
+      for (int segAboveIdx = 0; segAboveIdx < static_cast<int>(segments[prtIdx - 1].size()); ++segAboveIdx) {
+        auto segAbove = segments[prtIdx - 1][segAboveIdx];
+        if (segAbove.LayerCount() != 0 && 
+            std::abs(seg.strip() - segAbove.strip()) <= crossPartSegWidth &&
+            (seg.quality() & 0xff81f000) > (segAbove.quality() & 0xff81f000) ) { // compare quality with only layer count and pattern id (ignore hit count, strip and eta partition)
+          segRealKilled[prtIdx-1][segIdx].reset();    
+        }
+      }
+      for (int segBelowIdx = 0; segBelowIdx < static_cast<int>(segments[prtIdx + 1].size()); ++segBelowIdx) {
+        auto segBelow = segments[prtIdx + 1][segBelowIdx];
+        if (segBelow.LayerCount() != 0 && 
+            std::abs(seg.strip() - segBelow.strip()) <= crossPartSegWidth &&
+            (seg.quality() & 0xff81f000) > (segBelow.quality() & 0xff81f000) ) { // compare quality with only layer count and pattern id (ignore hit count, strip and eta partition)
+          segRealKilled[prtIdx+1][segIdx].reset();    
+        }
+      }
+    }
+  }
+  auto segsOut = segRealKilled;
+  // Step 2: Kill virtual segments that still have a nearby real segment (i.e. virtual segments with a better nearby real segment)
+  for (int prtIdx = 1; prtIdx < static_cast<int>(segRealKilled.size()) - 1; prtIdx += 2) {
+    for (int segIdx = 0; segIdx < static_cast<int>(segRealKilled[prtIdx].size()); ++segIdx) {
+      auto seg = segRealKilled[prtIdx][segIdx];
+      if (seg.patternId() == 0) 
+        continue;
+      for (int segAboveIdx = 0; segAboveIdx < static_cast<int>(segRealKilled[prtIdx - 1].size()); ++segAboveIdx) {
+        auto segAbove = segRealKilled[prtIdx - 1][segAboveIdx];
+        if (segAbove.LayerCount() != 0 && 
+            std::abs(seg.strip() - segAbove.strip()) <= crossPartSegWidth) {
+          segsOut[prtIdx][segIdx].reset();    
+        }
+      }
+      for (int segBelowIdx = 0; segBelowIdx < static_cast<int>(segRealKilled[prtIdx + 1].size()); ++segBelowIdx) {
+        auto segBelow = segRealKilled[prtIdx + 1][segBelowIdx];
+        if (segBelow.LayerCount() != 0 && 
+            std::abs(seg.strip() - segBelow.strip()) <= crossPartSegWidth) {
+          segsOut[prtIdx][segIdx].reset();    
+        }
+      }
+    }
+  }
+  return segsOut;
+}
+
+std::tuple<std::vector<ME0StubPrimitive>, Config> l1t::me0::processChamber(const std::vector<std::vector<UInt192>>& chamberData,
+                                                                           const std::vector<std::vector<std::vector<int>>>& chamberBxData,
+                                                                           Config& config) {
   std::vector<std::vector<ME0StubPrimitive>> segments;
   int numFinder = (config.xPartitionEnabled) ? 15 : 8;
 
@@ -85,8 +114,8 @@ std::vector<ME0StubPrimitive> l1t::me0::processChamber(const std::vector<std::ve
       }
       // odd finders are the OR of two adjacent partitions
       else {
-        data[finder][0] = chamberData[finder / 2 + 1][0];
-        data[finder][1] = chamberData[finder / 2 + 1][1];
+        data[finder][0] =                              chamberData[finder / 2 + 1][0];
+        data[finder][1] =                              chamberData[finder / 2 + 1][1];
         data[finder][2] = chamberData[finder / 2][2] | chamberData[finder / 2 + 1][2];
         data[finder][3] = chamberData[finder / 2][3] | chamberData[finder / 2 + 1][3];
         data[finder][4] = chamberData[finder / 2][4];
@@ -113,9 +142,10 @@ std::vector<ME0StubPrimitive> l1t::me0::processChamber(const std::vector<std::ve
     segments.push_back(segs);
   }
 
-  if (config.crossPartitionSegmentWidth > 0) {
+  if (config.crossPartitionSegmentWidth > 0) 
     segments = crossPartitionCancellation(segments, config.crossPartitionSegmentWidth);
-  }
+  if (config.clearanceWidth > 0)
+    segments = deghostingClearance(segments, config.clearanceWidth);
 
   // pick the best N outputs from each partition
   for (int i = 0; i < static_cast<int>(segments.size()); ++i) {
@@ -138,5 +168,14 @@ std::vector<ME0StubPrimitive> l1t::me0::processChamber(const std::vector<std::ve
   std::vector<ME0StubPrimitive> concatenated = concatVector(joinedSegments);
   segmentSorter(concatenated, config.numOutputs);
 
-  return concatenated;
+  // Fit segments and bending angle cut
+  for (ME0StubPrimitive& seg : concatenated) {
+    if (seg.patternId() == 0) continue; // skip stubs that are not valid
+    seg.fit(config.patSpans[seg.patternId()-1]);
+    if (std::abs(seg.bendingAngle()) > config.bendAngleCut) {
+      seg.reset();
+    }
+  }
+
+  return std::make_tuple(concatenated, config);
 }

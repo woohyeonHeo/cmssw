@@ -9,9 +9,11 @@ bool l1t::me0::isGhost(const ME0StubPrimitive& seg, const ME0StubPrimitive& comp
     from each other)
     */
 
-  bool ghost = (seg.quality() < comp.quality()) && (!checkStrips || (std::abs(seg.strip() - comp.strip()) < 2)) &&
-               (!checkIds || ((seg.patternId() == comp.patternId()) || (seg.patternId() + 2 == comp.patternId()) ||
-                              (seg.patternId() == comp.patternId() + 2)));
+  bool ghost = (seg.quality() < comp.quality()) && 
+               (!checkStrips || (std::abs(seg.strip() - comp.strip()) < 2)) &&
+               (!checkIds || ( (seg.patternId() == comp.patternId()) || 
+                               (seg.patternId() + 2 == comp.patternId()) ||
+                               (seg.patternId() == comp.patternId() + 2) ));
   return ghost;
 }
 
@@ -104,6 +106,10 @@ std::vector<ME0StubPrimitive> l1t::me0::processPartition(const std::vector<UInt1
   std::vector<ME0StubPrimitive> out;
   std::vector<ME0StubPrimitive> maxSegs;
   const std::vector<ME0StubPrimitive> segments = patMux(partitionData, partitionBxData, partition, config);
+
+  if (config.deghostPre && config.deghostPost) {
+    throw std::runtime_error("Both pre and post deghosting cannot be enabled at the same time");
+  }
 
   if (config.deghostPre) {
     tmp = cancelEdges(segments, config.groupWidth, config.ghostWidth, config.edgeDistance);

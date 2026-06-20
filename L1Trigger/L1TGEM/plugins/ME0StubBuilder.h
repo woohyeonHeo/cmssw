@@ -45,11 +45,15 @@ private:
   bool xPartitionEnabled_;
   bool enableNonPointing_;
   int32_t crossPartitionSegmentWidth_;
+  int32_t clearanceWidth_;
   int32_t numOutputs_;
   bool checkIds_;
   int32_t edgeDistance_;
   int32_t numOr_;
   double mseThreshold_;
+  double bendAngleCut_;
+  int32_t BXWindow_;
+  int32_t pulseStretchBx_;
 };
 
 #endif

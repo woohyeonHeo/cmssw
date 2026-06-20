@@ -56,7 +56,7 @@ std::vector<ME0StubPrimitive> l1t::me0::patMux(const std::vector<UInt192>& parti
                                                const std::vector<std::vector<int>>& partitionBxData,
                                                int partition,
                                                Config& config) {
-  std::vector<ME0StubPrimitive> out;
+  std::vector<ME0StubPrimitive> newSegs;
   for (int strip = 0; strip < config.width; ++strip) {
     const std::vector<uint64_t>& dataWindow = extractDataWindow(partitionData, strip, config.maxSpan);
     const std::vector<std::vector<int>>& bxDataWindow = extractBxDataWindow(partitionBxData, strip, config.maxSpan);
@@ -69,7 +69,8 @@ std::vector<ME0StubPrimitive> l1t::me0::patMux(const std::vector<UInt192>& parti
                                           config.maxSpan,
                                           config.skipCentroids,
                                           config.numOr);
-    out.push_back(seg);
+    newSegs.push_back(seg);
   }
-  return out;
+  auto peakingSegs = config.peakingManager.processSegments(partition, newSegs);
+  return peakingSegs;
 }

@@ -2,6 +2,44 @@
 
 using namespace l1t::me0;
 
+//define functions to generate patterns
+HiLo l1t::me0::mirrorHiLo(const HiLo& layer) {
+  HiLo mirrored{-1 * (layer.lo), -1 * (layer.hi)};
+  return mirrored;
+}
+PatternDefinition l1t::me0::mirrorPatternDefinition(const PatternDefinition& pattern, int id) {
+  std::vector<HiLo> layers_;
+  layers_.reserve(pattern.layers.size());
+  for (HiLo l : pattern.layers) {
+    layers_.push_back(mirrorHiLo(l));
+  }
+  PatternDefinition mirrored{id, layers_};
+  return mirrored;
+}
+std::vector<HiLo> l1t::me0::createPatternLayer(double lower, double upper) {
+  std::vector<HiLo> layerList;
+  double hi, lo;
+  int hi_i, lo_i;
+  for (int i = 0; i < 6; ++i) {
+    if (i < 3) {
+      hi = lower * (i - 2.5);
+      lo = upper * (i - 2.5);
+    } else {
+      hi = upper * (i - 2.5);
+      lo = lower * (i - 2.5);
+    }
+    if (std::abs(hi) < 0.1) {
+      hi = 0.0f;
+    }
+    if (std::abs(lo) < 0.1) {
+      lo = 0.0f;
+    }
+    hi_i = std::ceil(hi);
+    lo_i = std::floor(lo);
+    layerList.push_back(HiLo{hi_i, lo_i});
+  }
+  return layerList;
+}
 std::vector<int> l1t::me0::shiftCenter(const HiLo& layer, int maxSpan) {
   /*
     Patterns are defined as a +hi and -lo around a center point of a pattern.

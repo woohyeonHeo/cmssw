@@ -26,11 +26,15 @@ ME0StubBuilder::ME0StubBuilder(const edm::ParameterSet& ps) {
   xPartitionEnabled_ = ps.getParameter<bool>("xPartitionEnabled");
   enableNonPointing_ = ps.getParameter<bool>("enableNonPointing");
   crossPartitionSegmentWidth_ = ps.getParameter<int32_t>("crossPartitionSegmentWidth");
+  clearanceWidth_ = ps.getParameter<int32_t>("clearanceWidth");
   numOutputs_ = ps.getParameter<int32_t>("numOutputs");
   checkIds_ = ps.getParameter<bool>("checkIds");
   edgeDistance_ = ps.getParameter<int32_t>("edgeDistance");
   numOr_ = ps.getParameter<int32_t>("numOr");
   mseThreshold_ = ps.getParameter<double>("mseThreshold");
+  bendAngleCut_ = ps.getParameter<double>("bendAngleCut");
+  BXWindow_ = ps.getParameter<int32_t>("BXWindow");
+  pulseStretchBx_ = ps.getParameter<int32_t>("pulseStretchBx");
 }
 ME0StubBuilder::~ME0StubBuilder() {}
 
@@ -41,17 +45,20 @@ void ME0StubBuilder::fillDescription(edm::ParameterSetDescription& desc) {
   desc.add<int32_t>("maxSpan", 37);
   desc.add<int32_t>("width", 192);
   desc.add<bool>("deghostPre", true);
-  desc.add<bool>("deghostPost", true);
+  desc.add<bool>("deghostPost", false);
   desc.add<int32_t>("groupWidth", 8);
   desc.add<int32_t>("ghostWidth", 1);
   desc.add<bool>("xPartitionEnabled", true);
   desc.add<bool>("enableNonPointing", false);
   desc.add<int32_t>("crossPartitionSegmentWidth", 4);
+  desc.add<int32_t>("clearanceWidth", 0);
   desc.add<int32_t>("numOutputs", 4);
   desc.add<bool>("checkIds", false);
   desc.add<int32_t>("edgeDistance", 2);
   desc.add<int32_t>("numOr", 2);
   desc.add<double>("mseThreshold", 0.75);
+  desc.add<double>("bendAngleCut", 1.0);
+  desc.add<int32_t>("pulseStretchBx", 0);
 }
 
 void ME0StubBuilder::build(const GEMPadDigiCollection* padDigis, ME0StubCollection& oc) {
@@ -68,10 +75,14 @@ void ME0StubBuilder::build(const GEMPadDigiCollection* padDigis, ME0StubCollecti
   config.xPartitionEnabled = xPartitionEnabled_;
   config.enableNonPointing = enableNonPointing_;
   config.crossPartitionSegmentWidth = crossPartitionSegmentWidth_;
+  config.clearanceWidth = clearanceWidth_;
   config.numOutputs = numOutputs_;
   config.checkIds = checkIds_;
   config.edgeDistance = edgeDistance_;
   config.numOr = numOr_;
+  config.mseThreshold = mseThreshold_;
+  config.bendAngleCut = bendAngleCut_;
+  config.pulseStretchBx = pulseStretchBx_;
 
   std::map<uint32_t, std::pair<ME0ChamberData, ME0ChamberBXData>> dataMap;
   for (auto it = padDigis->begin(); it != padDigis->end(); ++it) {

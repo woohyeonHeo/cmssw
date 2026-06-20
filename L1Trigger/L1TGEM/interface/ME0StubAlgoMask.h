@@ -5,9 +5,37 @@
 
 namespace l1t {
   namespace me0 {
+    class HiLo {
+    private:
+    public:
+      int hi, lo;
+      HiLo(int hi_, int lo_) : hi(hi_), lo(lo_) {}
+    };
+
+    class PatternDefinition {
+    private:
+    public:
+      int id;
+      std::vector<HiLo> layers;
+      PatternDefinition(int id_, std::vector<HiLo> layers_) : id(id_), layers(layers_) {}
+    };
+
+    class Mask {
+    private:
+    public:
+      int id;
+      std::vector<uint64_t> mask;
+      Mask(int id_, std::vector<uint64_t> mask_) : id(id_), mask(mask_) {}
+      std::string toString() const; // not implemented, for debugging purposes
+    };
+
     std::vector<int> shiftCenter(const HiLo& layer, int maxSpan);
     uint64_t setHighBits(const std::vector<int>& loHiPair);
     Mask getLayerMask(const PatternDefinition& layerPattern, int maxSpan);
+
+    HiLo mirrorHiLo(const HiLo& layer);
+    PatternDefinition mirrorPatternDefinition(const PatternDefinition& pattern, int id);
+    std::vector<HiLo> createPatternLayer(double lower, double upper);
 
     /*
     createPatternLayer(low, high) returns a vector of HiLo objects with the given low and high values.
@@ -48,6 +76,24 @@ namespace l1t {
     const PatternDefinition kPatternRight7 = mirrorPatternDefinition(kPatternLeft7, kPatternLeft7.id - 1);
     const PatternDefinition kPatternLeft8 = PatternDefinition(2, createPatternLayer(5.4, 7.0));
     const PatternDefinition kPatternRight8 = mirrorPatternDefinition(kPatternLeft8, kPatternLeft8.id - 1);
+
+    const std::vector<PatternDefinition> kPatternDefinitions{kPatternStraight,
+                                                             kPatternLeft,
+                                                             kPatternRight,
+                                                             kPatternLeft2,
+                                                             kPatternRight2,
+                                                             kPatternLeft3,
+                                                             kPatternRight3,
+                                                             kPatternLeft4,
+                                                             kPatternRight4,
+                                                             kPatternLeft5,
+                                                             kPatternRight5,
+                                                             kPatternLeft6,
+                                                             kPatternRight6,
+                                                             kPatternLeft7,
+                                                             kPatternRight7,
+                                                             kPatternLeft8,
+                                                             kPatternRight8};
 
     const std::vector<Mask> kLayerMask{getLayerMask(kPatternStraight, 37),
                                        getLayerMask(kPatternLeft, 37),

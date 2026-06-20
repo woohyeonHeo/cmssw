@@ -11,15 +11,15 @@ std::vector<uint64_t> l1t::me0::maskLayerData(const std::vector<uint64_t>& data,
   return out;
 }
 
-std::pair<std::vector<double>, double> l1t::me0::calculateCentroids(
+std::pair<std::vector<int>, double> l1t::me0::calculateCentroids(
     const std::vector<uint64_t>& maskedData, const std::vector<std::vector<int>>& partitionBxData) {
-  std::vector<double> centroids;
+  std::vector<int> centroids;
   std::vector<int> bxs;
   for (int ly = 0; ly < static_cast<int>(maskedData.size()); ++ly) {
     auto data = maskedData[ly];
     auto bxData = partitionBxData[ly];
     const auto temp = findCentroid(data);
-    double curCentroid = temp.first;
+    int curCentroid = temp.first;
     std::vector<int> hitsIndices = temp.second;
     centroids.push_back(curCentroid);
 
@@ -122,18 +122,19 @@ ME0StubPrimitive l1t::me0::patUnit(const std::vector<uint64_t>& data,
   // (3) count # of hits & process centroids
   std::vector<int> hcs;
   std::vector<int> lcs;
-  std::vector<std::vector<double>> centroids;
+  std::vector<std::vector<int>> centroids;
   std::vector<double> bxs;
   for (const std::vector<uint64_t>& x : maskedData) {
-    hcs.push_back(calculateHitCount(x, lightHitCount));
+    hcs.push_back(0); // hit count is not used in the current quality calculation, so we set it to 0 for now - can be re-enabled if needed
+    // hcs.push_back(calculateHitCount(x, lightHitCount));
     lcs.push_back(calculateLayerCount(x));
     if (skipCentroids) {
       centroids.push_back({0, 0, 0, 0, 0, 0});
       bxs.push_back(-9999);
     } else {
       auto temp = calculateCentroids(x, bxData);
-      std::vector<double> curPatternCentroids = temp.first;
-      int curPatternBx = temp.second;
+      std::vector<int> curPatternCentroids = temp.first;
+      double curPatternBx = temp.second;
       centroids.push_back(curPatternCentroids);
       bxs.push_back(curPatternBx);
     }
@@ -152,23 +153,13 @@ ME0StubPrimitive l1t::me0::patUnit(const std::vector<uint64_t>& data,
   }
 
   // (5) apply a layer threshold
-  int lyThreshFinal;
-  if (lyThreshPatid[best.patternId() - 1] > lyThreshEta[partition]) {
-    lyThreshFinal = lyThreshPatid[best.patternId() - 1];
-  } else {
-    lyThreshFinal = lyThreshEta[partition];
-  }
-
+  int lyThreshFinal = (lyThreshPatid[best.patternId() - 1] > lyThreshEta[partition]) ? lyThreshPatid[best.patternId() - 1] : lyThreshEta[partition];
   if (best.layerCount() < lyThreshFinal) {
     best.reset();
   }
 
-  // (6) remove very wide segments
-  if (best.patternId() <= 10) {
-    best.reset();
-  }
-
-  // (7) remove segments with large clusters for wide segments - ONLY NEEDED FOR PU200 - NOT USED AT THE MOMENT
+  /*
+  // (6) remove segments with large clusters for wide segments - ONLY NEEDED FOR PU200 - NOT USED AT THE MOMENT
   std::vector<int> clusterSizeMaxLimits = {3, 6, 9, 12, 15};
   std::vector<int> nHitsMaxLimits = {3, 6, 9, 12, 15};
   std::vector<int> clusterSizeCounts = calculateClusterSize(data);
@@ -194,6 +185,7 @@ ME0StubPrimitive l1t::me0::patUnit(const std::vector<uint64_t>& data,
 
   best.setMaxClusterSize(*std::max_element(clusterSizeCounts.begin(), clusterSizeCounts.end()));
   best.setMaxNoise(*std::max_element(nHitsCounts.begin(), nHitsCounts.end()));
+  */
 
   best.setHitCount(0);
   best.updateQuality();
